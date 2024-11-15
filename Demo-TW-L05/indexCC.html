@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TW geo info</title>
+</head>
+<body style="background-color:#404a59;">
+<div id="main" style="width:1300px; height:920px;"></div>
+
+<script src="https://fastly.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+
+<script>
+  var chartDom = document.getElementById("main");
+  var myChart = echarts.init(chartDom);
+
+  fetch("./twCounty2010.json")
+    .then((response) => response.json())
+    .then((geojson) => {
+      echarts.registerMap('TW', geojson);
+
+      var option = {
+  backgroundColor: '#404a59',
+  tooltip: {
+    trigger: 'item',
+  },
+  geo: {
+    map: 'TW',
+    layoutCenter: ['50%', '50%'],
+    layoutSize: '100%',
+    aspectScale: 1,
+    zoom: 1.0,
+    roam: true,
+    itemStyle: {
+      areaColor: '#dad8d8',
+      borderColor: '#111'
+    },
+          tooltip: {
+        show: false // 隱藏縣市的tooltip
+      },
+    emphasis: {
+      areaColor: 'rgba(42, 50, 60, 0.35)'
+    }
+  },
+  series: [
+    // 出發地點的標記
+    {
+      name: '出發地點標記',
+      type: 'scatter',
+      coordinateSystem: 'geo',
+      symbol: 'pin',
+      zlevel: 2,
+      symbolSize: [75, 75],
+      data: [
+        { name: '梧棲', value: [120.52778, 24.23068, 150, '梧'] }
+      ],
+      label: {
+        show: true,
+        formatter: '{@[3]}',
+        position: 'inside',
+        color: '#fff',
+        fontSize: 24
+      },
+      itemStyle: {
+        color: '#ff0000'
+      }
+    },
+    // 主要地點的標記（縣市），隱藏tooltip
+    {
+      name: '地點標記',
+      type: 'scatter',
+      coordinateSystem: 'geo',
+      symbolSize: 12,
+      zlevel: 3,
+      data: [
+        { name: '新竹林森', value: [120.963311, 24.798299, 1890, '桃竹處', '新竹區'] },
+        { name: '羅東倉前', value: [121.770948, 24.68047, 1500, '北三處', '羅東區'] },
+        { name: '吉安自強', value: [121.588146, 23.981648, 1600, '北三處', '花蓮區'] },
+        { name: '北斗復興', value: [120.530448, 24.078883, 1750, '中彰處', '北斗區'] },
+        { name: '草屯中山', value: [120.682344, 23.975389, 2000, '中彰處', '草屯區'] },
+        { name: '鳳山鳳北', value: [120.367566, 22.64441, 2300, '高屏處', '鳳山區'] },
+        { name: '後龍中華', value: [120.790625, 24.616483, 1950, '台中處', '後龍區'] }
+      ],
+      label: {
+        show: false
+      },
+      itemStyle: {
+        color: '#1127b0'
+      },
+      tooltip: {
+        show: true, // 隱藏縣市的tooltip
+        trigger: 'item',
+            formatter: function (params) {
+              if (params.seriesType === 'scatter') {
+                return `${params.value[4]}／${params.value[3]}<br/>狀態: ${params.value[2]}`;
+              }
+            }
+      }
+    },
+    // 單一路線，隱藏tooltip
+    {
+      name: '單一路線',
+      type: 'lines',
+      coordinateSystem: 'geo',
+      effect: {
+        show: true,
+        period: 2,
+        trailLength: 0.2,
+        color: '#ffffff',
+        symbolSize: 9,
+      },
+      data: [
+        { fromName: '梧棲', toName: '羅東倉前', coords: [[120.52778, 24.23068], [121.770948, 24.68047]] },
+        { fromName: '梧棲', toName: '吉安自強', coords: [[120.52778, 24.23068], [121.588146, 23.981648]] },
+        { fromName: '梧棲', toName: '新竹林森', coords: [[120.52778, 24.23068], [120.963311, 24.798299]] },
+        { fromName: '梧棲', toName: '北斗復興', coords: [[120.52778, 24.23068], [120.530448, 24.078883]] },
+        { fromName: '梧棲', toName: '草屯中山', coords: [[120.52778, 24.23068], [120.682344, 23.975389]] },
+        { fromName: '梧棲', toName: '鳳山鳳北', coords: [[120.52778, 24.23068], [120.367566, 22.64441]] },
+        { fromName: '梧棲', toName: '後龍中華', coords: [[120.52778, 24.23068], [120.790625, 24.616483]] }
+      ],
+      lineStyle: {
+        color: '#ff0000',
+        width: 1.5,
+        curveness: 0.3
+      },
+      tooltip: {
+        show: false // 隱藏單一路線的tooltip
+      }
+    }
+  ]
+};
+
+
+      myChart.setOption(option);
+    })
+    .catch(error => {
+      console.error("Error loading the map data: ", error);
+    });
+</script>
+</body>
+</html>

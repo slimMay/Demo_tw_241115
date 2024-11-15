@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TW geo info</title>
+      <style>
+    /* 使用相對單位讓主容器隨視窗大小調整 */
+         #main {
+            width: 98vw;
+            height: 99vh;
+            max-width: 99vw;
+            max-height: 99vh;
+            margin: auto;
+            background-color: #404a59;
+    }
+  </style>
+</head>
+<body>
+<div id="main"></div>
+
+<script src="https://fastly.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+
+<script>
+  var chartDom = document.getElementById("main");
+  var myChart = echarts.init(chartDom);
+
+  fetch("./twCounty2010.json")
+    .then((response) => response.json())
+    .then((geojson) => {
+      echarts.registerMap('TW', geojson);
+
+    var geoCoordMap = {
+    '觀音': [121.10648954063151,25.052920088875805],
+    '岡山': [120.27481472916155,22.808279371324932],
+    '梧棲': [120.52778,24.23068],
+
+    '文山福興': [121.550026,25.003963],
+    '羅東站前': [121.773832,24.677186],
+    '基隆信義': [121.750832,25.12905],
+    '花蓮太昌': [121.578145,23.991909],
+    '三峽光明': [121.375517,24.928861],
+
+    '鳳山保南': [120.349996,22.596103],
+    '仁武八德': [120.33865,22.685827],
+    '新營東興': [120.322984,23.314165],
+    '民雄復興': [120.426621,23.558598],
+    '元長元南': [120.313012,23.647116],
+    '台東中山': [121.149389,22.754169],
+    '屏東枋寮': [120.593439,22.367239],   
+
+    '花壇學前': [120.542741,24.026707],
+    '竹山大明': [120.679826,23.759908],
+    '台中山西': [120.675731,24.171677],
+    '員林育英': [120.573859,23.969342],
+    '澎湖文光': [119.571122,23.577093],
+    '南投魚池': [120.935169,23.89824],
+    '苗栗縣府': [120.819021,24.564606],
+    '台東中山': [121.149389,22.754169]
+};
+
+var BJData = [
+    [{name:'觀音'}, {name:'文山福興',value:95}],
+    [{name:'觀音'}, {name:'羅東站前',value:90}],
+    [{name:'觀音'}, {name:'基隆信義',value:80}],
+    [{name:'觀音'}, {name:'花蓮太昌',value:70}],
+    [{name:'觀音'}, {name:'三峽光明',value:60}]
+];
+
+var SHData = [
+    [{name:'岡山'},{name:'鳳山保南',value:95}],
+    [{name:'岡山'},{name:'仁武八德',value:90}],
+    [{name:'岡山'},{name:'新營東興',value:80}],
+    [{name:'岡山'},{name:'民雄復興',value:70}],
+    [{name:'岡山'},{name:'民雄復興',value:70}],
+    [{name:'岡山'},{name:'台東中山',value:50}],
+    [{name:'岡山'},{name:'屏東枋寮',value:98}],
+    [{name:'岡山'},{name:'元長元南',value:60}]
+];
+
+var GZData = [
+    [{name:'梧棲'},{name:'花壇學前',value:95}],
+    [{name:'梧棲'},{name:'竹山大明',value:90}],
+    [{name:'梧棲'},{name:'台中山西',value:80}],
+    [{name:'梧棲'},{name:'員林育英',value:70}],
+    [{name:'梧棲'},{name:'澎湖文光',value:60}],
+    [{name:'梧棲'},{name:'苗栗縣府',value:100}],   
+    [{name:'梧棲'},{name:'南投魚池',value:50}]
+];
+
+var planePath = 'path://M1705.06,1318.313v-89.254...';
+
+      var convertData = function (data) {
+        var res = [];
+        for (var i = 0; i < data.length; i++) {
+          var dataItem = data[i];
+          var fromCoord = geoCoordMap[dataItem[0].name];
+          var toCoord = geoCoordMap[dataItem[1].name];
+          if (fromCoord && toCoord) {
+            res.push({
+              fromName: dataItem[0].name,
+              toName: dataItem[1].name,
+              coords: [fromCoord, toCoord]
+            });
+          }
+        }
+        return res;
+      };
+
+      var color = ['#a6c84c', '#ffa022', '#46bee9'];
+      var series = [];
+
+      [['觀音', BJData], ['岡山', SHData], ['梧棲', GZData]].forEach(function (item, i) {
+        series.push({
+          name: item[0],
+          type: 'lines',
+          zlevel: 1,
+          effect: {
+            show: true,
+            period: 6,
+            trailLength: 0.5,
+            color: '#fff',
+            symbolSize: 6
+          },
+          lineStyle: {
+            color: color[i],
+            width: 0.5,
+            curveness: 0.2
+          },
+          data: convertData(item[1])
+        },
+
+// 出發地點的標記１
+    {
+      name: '岡山物流中心',
+      type: 'scatter',
+      coordinateSystem: 'geo',
+      symbol: 'pin',
+      zlevel: 2,
+      symbolSize: [75, 75],
+      data: [
+        { name: '岡山', value: [120.27481472916155,22.808279371324932, 150, '岡'] }
+      ],
+      label: {
+        show: true,
+        formatter: '{@[3]}',
+        position: 'inside',
+        color: '#fff',
+        fontSize: 24
+      },
+      itemStyle: {
+        color: 'rgba(255, 160, 34, 0.35)'
+      }
+    },
+// 出發地點的標記２
+    {
+      name: '觀音物流中心',
+      type: 'scatter',
+      coordinateSystem: 'geo',
+      symbol: 'pin',
+      zlevel: 2,
+      symbolSize: [75, 75],
+      data: [
+        { name: '觀音', value: [121.10648954063151,25.052920088875805, 150, '觀'] }
+      ],
+      label: {
+        show: true,
+        formatter: '{@[3]}',
+        position: 'inside',
+        color: '#fff',
+        fontSize: 24
+      },
+      itemStyle: {
+        color: 'rgba(166, 200, 76, 0.35)'
+      }
+    },
+ // 出發地點的標記３
+    {
+      name: '梧棲物流中心',
+      type: 'scatter',
+      coordinateSystem: 'geo',
+      symbol: 'pin',
+      zlevel: 2,
+      symbolSize: [75, 75],
+      data: [
+        { name: '梧棲', value: [120.52778, 24.23068, 150, '梧'] }
+      ],
+      label: {
+        show: true,
+        formatter: '{@[3]}',
+        position: 'inside',
+        color: '#fff',
+        fontSize: 24
+      },
+      itemStyle: {
+        color: 'rgba(70, 190, 233, 0.35)'
+      }
+    },
+
+    {
+        name: item[0] ,
+        type: 'lines',
+        zlevel: 2,
+        symbol: ['none', 'arrow'],
+        symbolSize: 10,
+        effect: {
+            show: false,
+            period: 6,
+            trailLength: 0,
+            /*symbol: planePath,*/
+            symbolSize: 15
+        },
+        lineStyle: {
+            normal: {
+                color: color[i],
+                width: 1,
+                opacity: 0.6,
+                curveness: 0.2
+            }
+        },
+        data: convertData(item[1])
+    },
+
+
+
+        {
+          name: item[0],
+          type: 'effectScatter',
+          coordinateSystem: 'geo',
+          zlevel: 2,          
+          rippleEffect: { brushType: 'stroke' },
+          label: {
+            normal: {
+                show: true,
+                position: 'right',
+                color: '#fff',
+                fontSize: 14,
+                formatter: '{b}'
+            }
+        },
+          symbolSize: val => val[2] / 8,
+          itemStyle: { color: color[i] },
+          data: item[1].map(function (dataItem) {
+            return {
+              name: dataItem[1].name,
+              value: geoCoordMap[dataItem[1].name].concat([dataItem[1].value])
+            };
+          })
+        });
+      });
+
+    var option = {
+        backgroundColor: '#404a59',
+        baseOption: {
+          timeline: {
+            axisType: 'category',
+            autoPlay: true,
+            playInterval: 2000,
+            data: ['觀音物流', '岡山物流', '梧棲物流'],
+            label: { color: '#fff' },
+            lineStyle: { color: '#fff' },
+            checkpointStyle: { color: '#46bee9', borderColor: '#fff' }
+          },
+          title: { text: 'Pxmart 物流', left: 'center', textStyle: { color: '#fff' } },
+          tooltip: { trigger: 'item' },
+          legend: {
+            orient: 'vertical',
+            bottom: '15%',
+            left: '2%',
+            data: ['觀音', '岡山', '梧棲'],
+            textStyle: { color: '#fff' }
+          },
+          geo: {
+            map: 'TW',
+            layoutCenter: ['30%', '38%'],  // 調整地圖居中
+            layoutSize: '105%',             // 調整地圖比例
+            aspectScale: 1,
+            roam: true,
+            itemStyle: { areaColor: '#1e242b', borderColor: '#404a59' }
+          },
+          grid: { right: '10%', top: '20%', bottom: '20%', width: '25%' },
+          xAxis: {
+            type: 'value',
+            position: 'top',
+            splitLine: { show: false },
+            axisLine: { show: false },
+            axisTick: { show: false },
+            axisLabel: { color: '#fff' }
+          },
+          yAxis: {
+            type: 'category',
+            inverse: true,
+            axisLine: { show: false },
+            axisTick: { show: false },
+            axisLabel: { color: '#fff' }
+          }
+        },
+
+
+
+
+
+
+
+
+    options: [
+        // 観音的長條圖和地圖
+        {
+            title: { text: '觀音 物流' },
+            color: ['#a6c84c'],
+            yAxis: { data: ['文山福興', '羅東站前', '基隆信義', '花蓮太昌', '三峽光明'] },
+            series: [
+                ...series, // 包含線條等配置
+                {
+                    name: '物流量',
+                    type: 'bar',
+                    data: [95, 90, 80, 70, 60],
+                    itemStyle: { color: '#a6c84c' }
+                }
+            ]
+        },
+        // 岡山的長條圖和地圖
+        {
+            title: { text: '岡山 物流' },
+            color: ['#ffa022'],
+            yAxis: { data: ['鳳山保南', '仁武八德', '新營東興', '民雄復興','台東中山','屏東枋寮' ,'元長元南'] },
+            series: [
+                ...series,
+                {
+                    name: '物流量',
+                    type: 'bar',
+                    data: [95, 90, 80, 70, 50,98,60],
+                    itemStyle: { color: '#ffa022' },
+                }
+            ]
+        },
+        // 梧棲的長條圖和地圖
+        {
+            title: { text: '梧棲 物流' },
+            color: ['#46bee9'],
+            yAxis: { data: ['花壇學前', '竹山大明', '台中山西', '員林育英', '澎湖文光','苗栗縣府','南投魚池'] },
+            series: [
+                ...series,
+                {
+                    name: '物流量',
+                    type: 'bar',
+                    data: [95, 90, 80, 70, 60,100,50],
+                    itemStyle: { color: '#46bee9'}
+                }
+            ]
+        }
+    ]
+};
+
+          // 設置圖表
+      myChart.setOption(option);
+
+      // 監聽視窗大小變化，並自動調整圖表
+      window.addEventListener('resize', function () {
+        myChart.resize();
+      });
+    });
+</script>
+</body>
+</html>
