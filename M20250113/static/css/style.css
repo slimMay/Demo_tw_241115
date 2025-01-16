@@ -1,0 +1,60 @@
+* {
+  margin: 0;
+  padding: 0;
+}
+#chart-P02 {
+  position: relative;
+  margin-left: 3%;
+  margin-top: 5%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#Pie01-chart {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#Bar-37 {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
+ 
+#people-Chart {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#main-TimeLine {	
+  position: relative;
+  height: 900px;
+  overflow: hidden;
+}
+
+#P03-chart{
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+
+#chart-container {
+  position: relative;
+  height: 80vh;
+  overflow: hidden;
+}
+#main {
+  position: relative;
+  height: 80vh;
+  overflow: hidden;
+}
+
+#map4A {
+  position: relative;
+  height: 80vh;
+  overflow: hidden;
+}
