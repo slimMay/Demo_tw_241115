@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>醫護物資家戶所得與性別比時間軸視覺化</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, "Microsoft JhengHei", sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width:80vw;
+            background-color: white;
+            margin: 0 auto;
+            
+            border:  5px solid rgba(246,99,141,0.55);
+            border-radius: 0px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .title {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .charts-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .chart {
+            flex: 1 1 1 33%;
+            min-width: 32.5%;
+            /*min-width: 300px;*/
+            height: 400px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 40px 0;
+        }
+        .play-button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 0 10px;
+            cursor: pointer;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            transition: background-color 0.3s;
+        }
+        .play-button:hover {
+            background-color: #45a049;
+        }
+        .timeline {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            max-width: 800px;
+        }
+        .timeline-track {
+            flex: 1;
+            height: 4px;
+            background-color: #ddd;
+            position: relative;
+        }
+        .year-marker {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #9e9e9e;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .year-marker.active {
+            background-color: #e53935;
+            width: 20px;
+            height: 20px;
+        }
+        .year-label {
+            position: absolute;
+            top: 20px;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #666;
+        }
+        .stats-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .stats-panel {
+            flex: 1 1 1 33%;
+            min-width: 31%;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .stats-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        .total-row {
+            font-weight: bold;
+            margin-top: 10px;
+            border-top: 1px solid #ddd;
+            padding-top: 5px;
+        }
+        @media (max-width: 768px) {
+            .chart {
+                flex: 1 1 1 100%;
+            }
+            .stats-panel {
+                flex: 1 1 1 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!--<h1 class="title">2017-2024 家戶所得佔比與性別比分析</h1>-->
+        
+        <div class="charts-container">
+            <div id="pie-chart-Household" class="chart"></div>
+            <div id="pie-chart-Age" class="chart"></div>
+            <div id="gender-chart" class="chart"></div>
+        </div>
+        
+        <div class="controls">
+            <button id="play-button" class="play-button">▶</button>
+            <div class="timeline">
+                <div id="timeline-track" class="timeline-track"></div>
+            </div>
+        </div>
+        
+        <div class="stats-container">
+            <div class="stats-panel">
+                <div class="stats-title">家戶所得統計數據</div>
+                <div id="household-stats"></div>
+            </div>
+            <div class="stats-panel">
+                <div class="stats-title">年齡佔比統計數據</div>
+                <div id="ages-stats"></div>
+            </div>
+            <div class="stats-panel">
+                <div class="stats-title">性別比統計數據</div>
+                <div id="gender-stats"></div>
+            </div>
+        </div>
+    </div>
+    
+<script>
+        // 資料變數宣告
+        let yearData = {
+            household: {},
+            ages: {},
+            gender: {}
+        };
+
+        // 從 Google Apps Script 獲取資料
+        async function fetchData() {
+            try {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbxsKK2Orpi0xtOSOTJCuVmXWJb0Wdcb6657cSWEuf71gS-HmM1sGy_L_SiQg6Pn-5ci/exec');
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+                
+                // 轉換年份字串為數字以保持一致性
+                yearData.household = Object.keys(data.household).reduce((acc, year) => {
+                    acc[parseInt(year)] = data.household[year];
+                    return acc;
+                }, {});
+                
+                yearData.ages = Object.keys(data.ages).reduce((acc, year) => {
+                    acc[parseInt(year)] = data.ages[year];
+                    return acc;
+                }, {});
+                
+                yearData.gender = Object.keys(data.gender).reduce((acc, year) => {
+                    acc[parseInt(year)] = data.gender[year];
+                    return acc;
+                }, {});
+                
+                return true;
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                return false;
+            }
+        }
+
+        // 性別圖表符號定義
+        const symbols = [
+            'path://M18.2629891,11.7131596 L6.8091608,11.7131596 C1.6685112,11.7131596 0,13.032145 0,18.6237673 L0,34.9928467 C0,38.1719847 4.28388932,38.1719847 4.28388932,34.9928467 L4.65591984,20.0216948 L5.74941883,20.0216948 L5.74941883,61.000787 C5.74941883,65.2508314 11.5891201,65.1268798 11.5891201,61.000787 L11.9611506,37.2137775 L13.1110872,37.2137775 L13.4831177,61.000787 C13.4831177,65.1268798 19.3114787,65.2508314 19.3114787,61.000787 L19.3114787,20.0216948 L20.4162301,20.0216948 L20.7882606,34.9928467 C20.7882606,38.1719847 25.0721499,38.1719847 25.0721499,34.9928467 L25.0721499,18.6237673 C25.0721499,13.032145 23.4038145,11.7131596 18.2629891,11.7131596 M12.5361629,1.11022302e-13 C15.4784742,1.11022302e-13 17.8684539,2.38997966 17.8684539,5.33237894 C17.8684539,8.27469031 15.4784742,10.66467 12.5361629,10.66467 C9.59376358,10.66467 7.20378392,8.27469031 7.20378392,5.33237894 C7.20378392,2.38997966 9.59376358,1.11022302e-13 12.5361629,1.11022302e-13',
+            'path://M28.9624207,31.5315864 L24.4142575,16.4793596 C23.5227152,13.8063773 20.8817445,11.7111088 17.0107398,11.7111088 L12.112691,11.7111088 C8.24168636,11.7111088 5.60080331,13.8064652 4.70917331,16.4793596 L0.149791395,31.5315864 C-0.786976655,34.7595013 2.9373074,35.9147532 3.9192135,32.890727 L8.72689855,19.1296485 L9.2799493,19.1296485 C9.2799493,19.1296485 2.95992025,43.7750224 2.70031069,44.6924335 C2.56498417,45.1567684 2.74553639,45.4852068 3.24205501,45.4852068 L8.704461,45.4852068 L8.704461,61.6700801 C8.704461,64.9659872 13.625035,64.9659872 13.625035,61.6700801 L13.625035,45.360657 L15.5097899,45.360657 L15.4984835,61.6700801 C15.4984835,64.9659872 20.4191451,64.9659872 20.4191451,61.6700801 L20.4191451,45.4852068 L25.8814635,45.4852068 C26.3667633,45.4852068 26.5586219,45.1567684 26.4345142,44.6924335 C26.1636859,43.7750224 19.8436568,19.1296485 19.8436568,19.1296485 L20.3966199,19.1296485 L25.2043926,32.890727 C26.1862111,35.9147532 29.9105828,34.7595013 28.9625083,31.5315864 L28.9624207,31.5315864 Z M14.5617154,0 C17.4960397,0 19.8773132,2.3898427 19.8773132,5.33453001 C19.8773132,8.27930527 17.4960397,10.66906 14.5617154,10.66906 C11.6274788,10.66906 9.24611767,8.27930527 9.24611767,5.33453001 C9.24611767,2.3898427 11.6274788,0 14.5617154,0 L14.5617154,0 Z'
+        ];
+
+        // 初始化變數
+        let currentYear = 2017;
+        let isPlaying = false;
+        let playInterval = null;
+        let years = [];
+
+        // 計算家戶總數
+        function getTotalHousehold(year) {
+            return yearData.household[year].reduce((acc, curr) => acc + curr.value, 0);
+        }
+        
+        // 計算年齡總數
+        function getTotalAges(year) {
+            return yearData.ages[year].reduce((acc, curr) => acc + curr.value, 0);
+        }
+        
+        // 計算性別總數
+        function getTotalGender(year) {
+            return yearData.gender[year].male + yearData.gender[year].female;
+        }
+        
+        // 初始化圖表
+        const pieChart1 = echarts.init(document.getElementById('pie-chart-Household'));
+        const pieChart2 = echarts.init(document.getElementById('pie-chart-Age'));
+        const genderChart = echarts.init(document.getElementById('gender-chart'));
+        
+        // 更新時間軸
+        function updateTimeline() {
+            const timelineTrack = document.getElementById('timeline-track');
+            timelineTrack.innerHTML = '';
+            
+            years.forEach((year, index) => {
+                const position = (index / (years.length - 1)) * 100;
+                const marker = document.createElement('div');
+                marker.className = `year-marker ${year === currentYear ? 'active' : ''}`;
+                marker.style.left = `${position}%`;
+                marker.dataset.year = year;
+                
+                const label = document.createElement('div');
+                label.className = 'year-label';
+                label.style.left = `${position}%`;
+                label.textContent = year;
+                
+                marker.addEventListener('click', () => {
+                    currentYear = parseInt(year);
+                    updateCharts();
+                    updateTimeline();
+                });
+                
+                timelineTrack.appendChild(marker);
+                timelineTrack.appendChild(label);
+            });
+        }
+        
+        // 更新圖表
+        function updateCharts() {
+            // 更新環形圖
+            const householdData = yearData.household[currentYear];
+            const totalHousehold = getTotalHousehold(currentYear);
+            
+            const pieOption1 = {
+                title: {
+                    text: `家戶所得佔比 (${currentYear})`,
+                    subtext: `總數: ${totalHousehold} 戶`,
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        const percent = ((params.value / totalHousehold) * 100).toFixed(2);
+                        return `<div style="font-weight:bold">${params.seriesName}</div>` + 
+                               `${params.name}<br/>` +
+                               `數量: <b>${params.value}</b> 戶<br/>` +
+                               `佔比: <b>${percent}%</b>`;
+                    }
+                },               
+                legend: {
+                    orient: 'vertical',
+                    left: 2,
+                    top: '5',
+                    data: ['低收入戶', '中低收入戶', '邊緣戶', '一般戶']
+                },
+
+                color: ['#9C27B0', '#FCBB42', '#8CC152', '#90CAF9'],
+                series: [
+                    {
+                        name: '家戶所得',
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        center: ['50%', '55%'],
+                        avoidLabelOverlap: false,
+                        label: {
+                            show: true,
+                            formatter: function(params) {
+                                const percent = ((params.value / totalHousehold) * 100).toFixed(1);
+                                return `${params.name}\n${percent}%`;
+                            }
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                fontSize: '16',
+                                fontWeight: '420'
+                            }
+                        },
+                        data: householdData.filter(item => item.value > 0)
+                    }
+                ]
+            };
+            
+            pieChart1.setOption(pieOption1);
+
+            // 更新環形圖
+            const agesData = yearData.ages[currentYear];
+            const totalAges = getTotalAges(currentYear);
+            
+            const pieOption2 = {
+                title: {
+                    text: `年齡佔比 (${currentYear})`,
+                    subtext: `總數: ${totalAges} 人`,
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        const percent = ((params.value / totalAges) * 100).toFixed(2);
+                        return `<div style="font-weight:bold">${params.seriesName}</div>` + 
+                               `${params.name}<br/>` +
+                               `數量: <b>${params.value}</b> 人<br/>` +
+                               `佔比: <b>${percent}%</b>`;
+                    }
+                }, 
+                 grid: {
+                    top: '50%',
+                    //left: '20%',
+                    //right: '10%',
+                    bottom: '3%'
+                    //containLabel: true
+                    //height: 250,
+                    //width:300
+                },            
+                legend: {
+                    orient: 'vertical',
+                    left: 2,
+                    top: '5',
+                    data: ['18 歲以下', '19-64 歲', '65 歲以上']
+                },
+
+                color: ['#9C27B0', '#FCBB42', '#8CC152', '#90CAF9'],
+                series: [
+                    {
+                        name: '年齡佔比',
+
+                            type: 'pie',
+                            radius: ['50', '130'],
+                            center: ['50%', '60%'],
+                            roseType:{borderRadius:8},
+                            
+
+                        avoidLabelOverlap: false,
+                        label: {
+                            show: true,
+                            formatter: function(params) {
+                                const percent = ((params.value / totalAges) * 100).toFixed(1);
+                                return `${params.name}\n${percent}%`;
+                            }
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                fontSize: '16',
+                                fontWeight: '420'
+                            }
+                        },
+                        data: agesData.filter(item => item.value > 0)
+                    }
+                ]
+            };
+            
+            pieChart2.setOption(pieOption2);
+            
+            // 更新性別圖表
+            const genderData = yearData.gender[currentYear];
+            const totalGender = getTotalGender(currentYear);
+            const malePercent = ((genderData.male / totalGender) * 100).toFixed(1);
+            const femalePercent = ((genderData.female / totalGender) * 100).toFixed(1);
+            
+            // 計算Y軸最大值
+            const bodyMax = Math.max(genderData.male, genderData.female) * 1.0;
+            //const bodyMax = Math.max(genderData.male, genderData.female) * 1.2;
+            
+            const genderOption = {
+                title: {
+                    text: `性別比 (${currentYear})`,
+                    subtext: `總數: ${totalGender} 人`,
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        if (params.seriesIndex === 0) {
+                            const percent = ((params.value / totalGender) * 100).toFixed(2);
+                            return `<div style="font-weight:bold">性別統計</div>` + 
+                                   `${params.name}<br/>` +
+                                   `人數: <b>${params.value}</b> 人<br/>` +
+                                   `佔比: <b>${percent}%</b>`;
+                        }
+                    }
+                },
+                grid: {
+                    top: '30%',
+                    left: '20%',
+                    right: '10%',
+                    bottom: '15%',
+                    //containLabel: true
+                    height: 250,
+                    width:300
+                },
+                xAxis: {
+                    data: ['男', '女'],
+                    axisTick: { show: false },
+                    axisLine: { show: false },
+                    axisLabel: { show: true, fontSize: 16 }
+                },
+                yAxis: {
+                    name: '總人數',
+                    max: bodyMax,
+                    position: 'left',
+                    splitLine: { show: false }
+                },
+                series: [
+                    {
+                        name: '人數',
+                        type: 'pictorialBar',
+                        symbolClip: true,
+                        symbolBoundingData: bodyMax,
+                        label: {
+                            normal: {
+                                show: true,
+                                position: 'top',
+                                formatter: function(param) {
+                                    const percentage = (param.value / totalGender * 100).toFixed(1);
+                                    return `${percentage} %\n${param.value} 人`;
+                                },
+                                fontSize: 16,
+                                lineHeight: 20,
+                                fontWeight: '420'
+                            }
+                        },
+                        data: [
+                            {
+                                value: genderData.male,
+                                symbol: symbols[0],
+                                itemStyle: { color: '#0091ea' }
+                            },
+                            {
+                                value: genderData.female,
+                                symbol: symbols[1],
+                                itemStyle: { color: '#f45b8a' }
+                            }
+                        ],
+                        z: 10
+                    },
+                    {
+                        name: '總數',
+                        type: 'pictorialBar',
+                        symbolBoundingData: bodyMax,
+                        animationDuration: 0,
+                        itemStyle: { color: '#e0e0e0' },
+                        data: [
+                            { value: bodyMax, symbol: symbols[0] },
+                            { value: bodyMax, symbol: symbols[1] }
+                        ]
+                    }
+                ]
+            };
+            
+            genderChart.setOption(genderOption);
+            
+            // 更新統計資料面板
+            updateStats();
+        }
+        
+        // 更新統計資料面板
+        function updateStats() {
+            // 家戶所得統計
+            const householdStats = document.getElementById('household-stats');
+            const householdData = yearData.household[currentYear];
+            const totalHousehold = getTotalHousehold(currentYear);
+            
+            let householdHtml = '';
+            householdData.forEach(item => {
+                if (item.value > 0) {
+                    const percent = ((item.value / totalHousehold) * 100).toFixed(2);
+                    householdHtml += `
+                        <div class="stats-row">
+                            <span>${item.name}</span>
+                            <span>${item.value} 戶 (${percent}%)</span>
+                        </div>
+                    `;
+                }
+            });
+            
+            householdHtml += `
+                <div class="stats-row total-row">
+                    <span>總計</span>
+                    <span>${totalHousehold} 戶 (100%)</span>
+                </div>
+            `;
+            
+            householdStats.innerHTML = householdHtml;
+
+            // 年齡佔比統計
+            const agesStats = document.getElementById('ages-stats');
+            const agesData = yearData.ages[currentYear];
+            const totalAges = getTotalAges(currentYear);
+            
+            let agesHtml = '';
+            agesData.forEach(item => {
+                if (item.value > 0) {
+                    const percent = ((item.value / totalAges) * 100).toFixed(2);
+                    agesHtml += `
+                        <div class="stats-row">
+                            <span>${item.name}</span>
+                            <span>${item.value} 人 (${percent}%)</span>
+                        </div>
+                    `;
+                }
+            });
+            
+            agesHtml += `
+                <div class="stats-row total-row">
+                    <span>總計</span>
+                    <span>${totalAges} 人 (100%)</span>
+                </div>
+            `;
+            
+            agesStats.innerHTML = agesHtml;
+            
+            // 性別比統計
+            const genderStats = document.getElementById('gender-stats');
+            const genderData = yearData.gender[currentYear];
+            const totalGender = getTotalGender(currentYear);
+            const malePercent = ((genderData.male / totalGender) * 100).toFixed(2);
+            const femalePercent = ((genderData.female / totalGender) * 100).toFixed(2);
+            
+            let genderHtml = `
+                <div class="stats-row">
+                    <span>男性</span>
+                    <span>${genderData.male} 人 (${malePercent}%)</span>
+                </div>
+                <div class="stats-row">
+                    <span>女性</span>
+                    <span>${genderData.female} 人 (${femalePercent}%)</span>
+                </div>
+                <div class="stats-row total-row">
+                    <span>總計</span>
+                    <span>${totalGender} 人 (100%)</span>
+                </div>
+            `;
+            
+            genderStats.innerHTML = genderHtml;
+        }
+        
+// 播放/暫停切換
+document.getElementById('play-button').addEventListener('click', function() {
+    isPlaying = !isPlaying;
+    this.innerHTML = isPlaying ? '❚❚' : '▶';
+    
+    if (isPlaying) {
+        playInterval = setInterval(() => {
+            const currentIndex = years.indexOf(currentYear);
+            const nextIndex = (currentIndex + 1) % years.length;
+            currentYear = years[nextIndex];
+            updateCharts();
+            updateTimeline();
+        }, 2000);
+    } else {
+        clearInterval(playInterval);
+    }
+});
+
+// 初始化時自動開始播放
+function initializeAutoPlay() {
+    isPlaying = true;
+    document.getElementById('play-button').innerHTML = '❚❚';
+    
+    playInterval = setInterval(() => {
+        const currentIndex = years.indexOf(currentYear);
+        const nextIndex = (currentIndex + 1) % years.length;
+        currentYear = years[nextIndex];
+        updateCharts();
+        updateTimeline();
+    }, 2000);
+}
+
+// 在頁面載入完成後啟動自動播放
+document.addEventListener('DOMContentLoaded', function() {
+    // 其他初始化代碼...
+    
+    // 啟動自動播放
+    initializeAutoPlay();
+});
+        
+        // 窗口大小變化時調整圖表大小
+        window.addEventListener('resize', function() {
+            pieChart1.resize();
+            pieChart2.resize();
+            genderChart.resize();
+        });
+        
+        // 初始化應用程式
+        async function initApp() {
+            const loadingElement = document.createElement('div');
+            loadingElement.style.position = 'fixed';
+            loadingElement.style.top = '50%';
+            loadingElement.style.left = '50%';
+            loadingElement.style.transform = 'translate(-50%, -50%)';
+            loadingElement.style.fontSize = '20px';
+            loadingElement.textContent = '載入資料中...';
+            document.body.appendChild(loadingElement);
+
+            try {
+                const success = await fetchData();
+                if (success) {
+                    years = Object.keys(yearData.ages).map(Number).sort();
+                    currentYear = years[0];
+                    updateTimeline();
+                    updateCharts();
+                    loadingElement.remove();
+                } else {
+                    loadingElement.textContent = '載入資料失敗，請稍後再試';
+                }
+            } catch (error) {
+                console.error('初始化錯誤:', error);
+                loadingElement.textContent = '發生錯誤，請重新整理頁面';
+            }
+        }
+
+        // 開始初始化
+        initApp();
+    </script>
+</body>
+</html>
